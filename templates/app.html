@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="theme-color" content="#1B3A6B"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>BMS – Breakdown Management</title>
+<link rel="manifest" href="/manifest.json"/>
+<style>
+:root{
+  --blue:#1B3A6B;--blue-l:#2C5396;--blue-d:#102746;
+  --red:#C8102E;--green:#16A34A;--orange:#D97706;--purple:#7C3AED;
+  --bg:#F2F4F7;--white:#fff;--text:#1A1A1A;--muted:#6B7280;--border:#E5E7EB;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;min-height:100vh}
+.page{display:none;flex-direction:column;flex:1;min-height:100vh}
+.page.active{display:flex}
+/* ── Login ── */
+#pg-login{justify-content:center;align-items:center;background:var(--blue);padding:20px}
+.login-card{background:var(--white);border-radius:16px;padding:36px 28px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo h1{color:var(--blue);font-size:20px;font-weight:800}
+.login-logo p{color:var(--muted);font-size:12px;margin-top:4px}
+/* ── Form ── */
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.fg input,.fg select,.fg textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--white);color:var(--text);transition:border-color .2s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--blue)}
+.fg input:disabled,.fg select:disabled{background:#F3F4F6;color:var(--muted);cursor:not-allowed}
+.fg input.err,.fg select.err{border-color:var(--red)}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;transition:all .15s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-l)}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-warn{background:var(--orange);color:#fff}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text)}
+.btn-ghost{background:transparent;color:var(--blue);padding:6px 10px}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-full{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+/* ── Topbar ── */
+.topbar{background:var(--blue);color:#fff;padding:0 16px;display:flex;align-items:center;height:54px;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.25);flex-shrink:0}
+.topbar-title{font-size:16px;font-weight:700;flex:1}
+.topbar-user{font-size:11px;opacity:.75;margin-right:10px}
+.topbar-btn{font-size:12px;opacity:.8;cursor:pointer;padding:5px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:none;color:#fff;font-family:inherit}
+.topbar-btn:hover{opacity:1;background:rgba(255,255,255,.12)}
+/* ── Sidebar (admin desktop) / Bottom nav (mobile) ── */
+.layout{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;background:var(--white);border-right:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;padding:12px 0}
+.sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:11px 18px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;border:none;background:none;font-family:inherit;width:100%;text-align:left;transition:all .15s;border-radius:0}
+.sidebar .nav-item:hover{background:var(--bg);color:var(--text)}
+.sidebar .nav-item.active{color:var(--blue);background:#EEF2FF;font-weight:700}
+.sidebar .nav-item svg{width:18px;height:18px;flex-shrink:0}
+.main-content{flex:1;overflow-y:auto;padding:20px}
+.bottom-nav{display:none;background:var(--white);border-top:1px solid var(--border);position:sticky;bottom:0;z-index:200;flex-shrink:0}
+.bottom-nav .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 4px;cursor:pointer;color:var(--muted);font-size:10px;gap:3px;border:none;background:none;font-family:inherit;transition:color .15s;position:relative}
+.bottom-nav .nav-item.active{color:var(--blue)}
+.bottom-nav .nav-item svg{width:20px;height:20px}
+.nav-badge{background:var(--orange);color:#fff;border-radius:10px;font-size:9px;font-weight:700;padding:1px 5px;position:absolute;top:5px;right:calc(50% - 20px)}
+@media(max-width:640px){
+  .sidebar{display:none}
+  .bottom-nav{display:flex}
+  .main-content{padding:12px}
+  .fg-row{grid-template-columns:1fr}
+}
+/* ── Cards ── */
+.card{background:var(--white);border-radius:12px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card-title{font-size:14px;font-weight:700;color:var(--blue);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+/* ── Alerts ── */
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px}
+.alert-success{background:#DCFCE7;color:#166534;border:1px solid #86EFAC}
+.alert-error{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5}
+.alert-info{background:#DBEAFE;color:#1E40AF;border:1px solid #93C5FD}
+.alert-warn{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D}
+/* ── NC Banner ── */
+.nc-banner{border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-weight:600;display:none;align-items:center;gap:8px}
+.nc-banner.reach{background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;display:flex}
+.nc-banner.resolution{background:#FEE2E2;color:#991B1B;border:1px solid #FCA5A5;display:flex}
+.nc-banner.both{background:#F3E8FF;color:#6B21A8;border:1px solid #D8B4FE;display:flex}
+/* ── Badges ── */
+.badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:700}
+.b-conf{background:#DCFCE7;color:#166534}
+.b-rnc{background:#FEF3C7;color:#92400E}
+.b-snc{background:#FEE2E2;color:#991B1B}
+.b-bnc{background:#F3E8FF;color:#6B21A8}
+.b-nc{background:#FEE2E2;color:#991B1B}
+/* ── Ticket list ── */
+.ticket-item{background:var(--white);border-radius:10px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.07);border-left:4px solid var(--blue);margin-bottom:10px}
+.ticket-item.nc{border-left-color:var(--red)}
+.ticket-item.conf{border-left-color:var(--green)}
+.ticket-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px}
+.ticket-token{font-weight:700;font-size:15px}
+.ticket-meta{font-size:12px;color:var(--muted);margin-top:4px}
+/* ── Table ── */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--bg);padding:10px 12px;text-align:left;font-weight:700;color:var(--muted);border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+tr:hover td{background:#F9FAFB}
+/* ── Stats ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+.stat-card{background:var(--white);border-radius:10px;padding:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.stat-num{font-size:28px;font-weight:800;color:var(--blue)}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;font-weight:600}
+/* ── Master data list ── */
+.master-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.master-item:last-child{border-bottom:none}
+.master-item.inactive{opacity:.45}
+/* ── Search ── */
+.search-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.search-row input,.search-row select{padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;flex:1;min-width:100px}
+.search-row input:focus,.search-row select:focus{outline:none;border-color:var(--blue)}
+/* ── Queue ── */
+.queue-item{display:flex;justify-content:space-between;align-items:center;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px 14px;margin-bottom:8px}
+/* ── Offline bar ── */
+.offline-bar{background:var(--orange);color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:600;display:none}
+.offline-bar.show{display:block}
+/* ── Spinner ── */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── Empty ── */
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-icon{font-size:40px;margin-bottom:10px}
+/* ── Modal ── */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border-radius:14px;padding:24px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:16px;color:var(--blue)}
+.modal-footer{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══════════════════════════════
+     LOGIN
+══════════════════════════════ -->
+<div id="pg-login" class="page active">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>🚗 TATA MOTORS BMS</h1>
+      <p>Breakdown Management System</p>
+    </div>
+    <div id="login-err" class="alert alert-error" style="display:none"></div>
+    <div class="fg">
+      <label>Username</label>
+      <input id="li-user" type="text" placeholder="Enter username" autocomplete="username"/>
+    </div>
+    <div class="fg">
+      <label>Password</label>
+      <input id="li-pass" type="password" placeholder="Enter password" autocomplete="current-password"/>
+    </div>
+    <button class="btn btn-primary btn-full" id="li-btn" onclick="doLogin()">Login</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     MAIN APP
+══════════════════════════════ -->
+<div id="pg-app" class="page">
+  <div id="offline-bar" class="offline-bar">⚠️ Offline — tickets queued and will upload automatically</div>
+
+  <div class="topbar">
+    <div class="topbar-title" id="topbar-title">BMS</div>
+    <span class="topbar-user" id="topbar-user"></span>
+    <button class="topbar-btn" onclick="doLogout()">Logout</button>
+  </div>
+
+  <div class="layout">
+    <!-- Sidebar (desktop) -->
+    <nav class="sidebar" id="sidebar"></nav>
+
+    <!-- Main content panels -->
+    <div class="main-content" id="main-content">
+
+      <!-- ── ADD TICKET ── -->
+      <div id="panel-add" class="panel" style="display:none">
+        <div id="nc-banner" class="nc-banner"></div>
+        <div class="card">
+          <div class="card-title">📋 New Breakdown Ticket</div>
+          <div id="form-alert" style="display:none"></div>
+
+          <div class="fg-row">
+            <div class="fg"><label>Token No *</label><input type="text" id="f-token" placeholder="TKN-001"/></div>
+            <div class="fg"><label>RC Number *</label><input type="text" id="f-rc" placeholder="GJ05AB1234"/></div>
+          </div>
+          <div class="fg-row">
+            <div class="fg"><label>Vehicle</label><select id="f-vehicle"><option value="">-- None --</option></select></div>
+            <div class="fg"><label>Technician</label><select id="f-tech"><option value="">-- None --</option></select></div>
+          </div>
+          <div class="fg-row">
+            <div class="fg"><label>Electrician</label><select id="f-elec"><option value="">-- None --</option></select></div>
+            <div class="fg"><label>Driver</label><select id="f-driver"><option value="">-- None --</option></select></div>
+          </div>
+          <div class="fg">
+            <label>Status (auto)</label>
+            <input id="f-status" readonly style="background:#F3F4F6;color:var(--muted);max-width:300px" placeholder="Calculated automatically"/>
+          </div>
+
+          <div class="fg">
+            <label>Assigned Time *</label>
+            <div class="fg-row2">
+              <input type="date" id="f-asgn-d"/>
+              <input type="time" id="f-asgn-t" step="60"/>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Reach Time <small style="font-weight:400;color:var(--muted)">(must be ≥ assigned)</small></label>
+            <div class="fg-row2">
+              <input type="date" id="f-reach-d" disabled/>
+              <input type="time" id="f-reach-t" step="60" disabled/>
+            </div>
+            <div id="reach-warn" style="font-size:12px;color:var(--orange);margin-top:4px;display:none"></div>
+          </div>
+          <div class="fg">
+            <label>Resolution Time <small style="font-weight:400;color:var(--muted)">(must be ≥ assigned)</small></label>
+            <div class="fg-row2">
+              <input type="date" id="f-res-d" disabled/>
+              <input type="time" id="f-res-t" step="60" disabled/>
+            </div>
+            <div id="res-warn" style="font-size:12px;color:var(--orange);margin-top:4px;display:none"></div>
+          </div>
+
+          <div class="fg" id="grp-reach-delay" style="display:none">
+            <label>Reach Delay Reason *</label>
+            <input type="text" id="f-reach-delay" placeholder="Why was reach time exceeded?"/>
+          </div>
+          <div class="fg" id="grp-res-delay" style="display:none">
+            <label>Resolution Delay Reason *</label>
+            <input type="text" id="f-res-delay" placeholder="Why was resolution time exceeded?"/>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap">
+            <button class="btn btn-primary" style="flex:1;min-width:140px" onclick="submitTicket()">💾 Save Ticket</button>
+            <button class="btn btn-outline" style="flex:1;min-width:100px" onclick="clearForm()">🧹 Clear</button>
+          </div>
+        </div>
+
+        <!-- Offline Queue -->
+        <div class="card" id="queue-card" style="display:none">
+          <div class="card-title">📤 Offline Queue (<span id="queue-count">0</span>)</div>
+          <div id="queue-list"></div>
+          <button class="btn btn-success btn-sm" onclick="uploadAll()" style="margin-top:8px">⬆ Upload All Now</button>
+        </div>
+      </div>
+
+      <!-- ── TICKETS ── -->
+      <div id="panel-tickets" class="panel" style="display:none">
+        <div class="search-row">
+          <input id="s-token" placeholder="Token No..." oninput="filterTickets()"/>
+          <input id="s-rc"    placeholder="RC No..."    oninput="filterTickets()"/>
+          <input id="s-tech"  placeholder="Technician..." oninput="filterTickets()"/>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <input type="date" id="s-from" onchange="loadTickets()"/>
+          <input type="date" id="s-to"   onchange="loadTickets()"/>
+          <button class="btn btn-outline btn-sm" onclick="clearFilters()">Clear Filters</button>
+          <button class="btn btn-success btn-sm" onclick="exportTickets()">⬇ Export to Excel</button>
+        </div>
+        <div id="tickets-container"></div>
+      </div>
+
+      <!-- ── DASHBOARD (admin) ── -->
+      <div id="panel-dashboard" class="panel" style="display:none">
+        <div class="fg-row" style="margin-bottom:14px">
+          <div class="fg"><label>From</label><input type="date" id="dash-from" onchange="loadDashboard()"/></div>
+          <div class="fg"><label>To</label><input type="date" id="dash-to" onchange="loadDashboard()"/></div>
+        </div>
+        <button class="btn btn-success btn-sm" style="margin-bottom:14px" onclick="exportDashboard()">⬇ Export to Excel</button>
+        <div class="stats-grid" id="dash-stats"></div>
+        <div class="card">
+          <div class="card-title">👨‍🔧 Technician Performance</div>
+          <div id="dash-tech"></div>
+        </div>
+      </div>
+
+      <!-- ── ADMIN PANEL ── -->
+      <div id="panel-admin" class="panel" style="display:none">
+        <!-- Users -->
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            👤 Users
+            <button class="btn btn-primary btn-sm" onclick="openUserModal()">+ Add User</button>
+          </div>
+          <div id="users-list"></div>
+        </div>
+
+        <!-- Master data sections -->
+        <div id="master-sections"></div>
+      </div>
+
+    </div><!-- /main-content -->
+  </div><!-- /layout -->
+
+  <!-- Bottom nav (mobile) -->
+  <div class="bottom-nav" id="bottom-nav"></div>
+</div>
+
+<!-- ══════ MODAL ══════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal-box">
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let TOKEN    = localStorage.getItem('bms_token') || '';
+let SESS     = JSON.parse(localStorage.getItem('bms_sess') || 'null');
+let MASTER   = JSON.parse(localStorage.getItem('bms_master') || '{}');
+let ALL_TICKETS = [];
+let QUEUE    = JSON.parse(localStorage.getItem('bms_queue') || '[]');
+let ONLINE   = navigator.onLine;
+let CUR_PANEL = '';
+
+const isAdmin = () => SESS && SESS.role === 'admin';
+
+// ══════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  window.addEventListener('online',  () => { ONLINE = true;  syncOnline(); });
+  window.addEventListener('offline', () => { ONLINE = false; document.getElementById('offline-bar').classList.add('show'); });
+
+  const today = new Date().toISOString().split('T')[0];
+  const ad = document.getElementById('f-asgn-d');
+  if (ad) ad.value = today;
+
+  if (TOKEN && SESS) showApp();
+});
+
+function syncOnline() {
+  document.getElementById('offline-bar').classList.remove('show');
+  tryUploadQueue();
+}
+
+// ══════════════════════════════════════════════════════════
+// API
+// ══════════════════════════════════════════════════════════
+async function api(url, opts = {}) {
+  opts.headers = { ...(opts.headers || {}), 'X-Session-Token': TOKEN };
+  if (opts.json) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(opts.json);
+    opts.method = opts.method || 'POST';
+    delete opts.json;
+  }
+  const res = await fetch(url, opts);
+  if (res.status === 401) { doLogout(); throw new Error('Session expired'); }
+  return res;
+}
+
+// ══════════════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('li-user').value.trim();
+  const password = document.getElementById('li-pass').value;
+  const errEl    = document.getElementById('login-err');
+  const btn      = document.getElementById('li-btn');
+  errEl.style.display = 'none';
+  if (!username || !password) { showEl(errEl, 'alert-error', 'Enter username and password.'); return; }
+  btn.innerHTML = '<span class="spinner"></span> Logging in...';
+  btn.disabled = true;
+  try {
+    const res  = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password}) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login failed');
+    TOKEN = data.token;
+    SESS  = { username: data.username, role: data.role };
+    localStorage.setItem('bms_token', TOKEN);
+    localStorage.setItem('bms_sess', JSON.stringify(SESS));
+    showApp();
+  } catch(e) { showEl(errEl, 'alert-error', e.message); }
+  finally { btn.innerHTML = 'Login'; btn.disabled = false; }
+}
+document.getElementById('li-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+async function doLogout() {
+  try { await api('/api/logout', { method:'POST' }); } catch {}
+  TOKEN = ''; SESS = null;
+  localStorage.removeItem('bms_token'); localStorage.removeItem('bms_sess');
+  document.getElementById('pg-app').classList.remove('active');
+  document.getElementById('pg-login').classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════
+// APP SHELL
+// ══════════════════════════════════════════════════════════
+function showApp() {
+  document.getElementById('pg-login').classList.remove('active');
+  document.getElementById('pg-app').classList.add('active');
+  document.getElementById('topbar-user').textContent = `👤 ${SESS.username} (${SESS.role === 'admin' ? 'Admin' : 'BD'})`;
+  buildNav();
+  loadMaster();
+  const first = isAdmin() ? 'dashboard' : 'add';
+  showPanel(first);
+}
+
+function buildNav() {
+  const items = isAdmin()
+    ? [ {id:'dashboard', icon:iconChart,  label:'Dashboard'},
+        {id:'tickets',   icon:iconList,   label:'All Tickets'},
+        {id:'add',       icon:iconPlus,   label:'Add Ticket'},
+        {id:'admin',     icon:iconGear,   label:'Admin Panel'} ]
+    : [ {id:'add',       icon:iconPlus,   label:'Add Ticket'},
+        {id:'tickets',   icon:iconList,   label:'My Tickets'} ];
+
+  const sidebar = document.getElementById('sidebar');
+  const bnav    = document.getElementById('bottom-nav');
+  sidebar.innerHTML = '';
+  bnav.innerHTML    = '';
+
+  items.forEach(it => {
+    // Sidebar
+    const sb = document.createElement('button');
+    sb.className = 'nav-item';
+    sb.id = `snav-${it.id}`;
+    sb.innerHTML = it.icon() + `<span>${it.label}</span>`;
+    sb.onclick = () => showPanel(it.id);
+    sidebar.appendChild(sb);
+
+    // Bottom nav
+    const bn = document.createElement('button');
+    bn.className = 'nav-item';
+    bn.id = `bnav-${it.id}`;
+    bn.innerHTML = it.icon() + `<span>${it.label}</span>`;
+    if (it.id === 'add') bn.innerHTML += `<span id="nav-badge" class="nav-badge" style="display:none"></span>`;
+    bn.onclick = () => showPanel(it.id);
+    bnav.appendChild(bn);
+  });
+}
+
+function showPanel(id) {
+  CUR_PANEL = id;
+  document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const panel = document.getElementById(`panel-${id}`);
+  if (panel) panel.style.display = 'block';
+  [`snav-${id}`,`bnav-${id}`].forEach(nid => {
+    const el = document.getElementById(nid);
+    if (el) el.classList.add('active');
+  });
+  document.getElementById('topbar-title').textContent =
+    {add:'Add Ticket', tickets:'All Tickets', dashboard:'Dashboard', admin:'Admin Panel'}[id] || 'BMS';
+
+  if (id === 'tickets')   loadTickets();
+  if (id === 'dashboard') loadDashboard();
+  if (id === 'admin')     loadAdmin();
+  if (id === 'add')       renderQueue();
+}
+
+// ══════════════════════════════════════════════════════════
+// MASTER DATA
+// ══════════════════════════════════════════════════════════
+async function loadMaster() {
+  try {
+    const res = await api('/api/master_data');
+    if (!res.ok) return;
+    MASTER = await res.json();
+    localStorage.setItem('bms_master', JSON.stringify(MASTER));
+  } catch {
+    const c = localStorage.getItem('bms_master');
+    if (c) MASTER = JSON.parse(c);
+  }
+  fillDropdowns();
+}
+
+function fillDropdowns() {
+  fillSel('f-vehicle',  MASTER.vehicles    || []);
+  fillSel('f-tech',     MASTER.technicians || []);
+  fillSel('f-elec',     MASTER.electricians|| []);
+  fillSel('f-driver',   MASTER.drivers     || []);
+}
+
+function fillSel(id, items) {
+  const el = document.getElementById(id); if (!el) return;
+  const cur = el.value;
+  el.innerHTML = '<option value="">-- None --</option>';
+  items.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; el.appendChild(o); });
+  if (cur) el.value = cur;
+}
+
+// ══════════════════════════════════════════════════════════
+// TIME / AUTO NC LOGIC
+// ══════════════════════════════════════════════════════════
+const REACH_H = 2, RES_H = 24;
+
+function getDT(did, tid) {
+  const d = document.getElementById(did)?.value;
+  const t = document.getElementById(tid)?.value;
+  return (d && t) ? new Date(`${d}T${t}`) : null;
+}
+
+function onAssignedChange() {
+  const ad = document.getElementById('f-asgn-d').value;
+  const at = document.getElementById('f-asgn-t').value;
+  // Enable reach/res as soon as assigned DATE is set (time can be filled after)
+  const hasDate = !!ad;
+  ['f-reach-d','f-reach-t','f-res-d','f-res-t'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.disabled = !hasDate;
+  });
+  if (hasDate) {
+    document.getElementById('f-reach-d').min = ad;
+    document.getElementById('f-res-d').min   = ad;
+    if (!document.getElementById('f-reach-d').value) document.getElementById('f-reach-d').value = ad;
+    if (!document.getElementById('f-res-d').value)   document.getElementById('f-res-d').value   = ad;
+  }
+  recalc();
+}
+
+function guardTime(dateid, timeid, warnid) {
+  const assigned = getDT('f-asgn-d','f-asgn-t');
+  const picked   = getDT(dateid, timeid);
+  // Only block if BOTH date and time are set on both sides and picked is earlier
+  if (assigned && picked && picked < assigned) {
+    const w = document.getElementById(warnid);
+    w.textContent = '⚠ Cannot be before assigned time.';
+    w.style.display = 'block';
+    setTimeout(() => w.style.display = 'none', 3000);
+    // Reset only the time, not the date
+    document.getElementById(timeid).value = '';
+    return; // don't call recalc yet — user needs to fix the time
+  }
+  recalc();
+}
+
+function recalc() {
+  const A = getDT('f-asgn-d','f-asgn-t');
+  const R = getDT('f-reach-d','f-reach-t');
+  const S = getDT('f-res-d','f-res-t');
+  let rNC = false, sNC = false;
+  if (A && R) rNC = (R - A) / 36e5 > REACH_H;
+  if (A && S) sNC = (S - A) / 36e5 > RES_H;
+
+  let status = '';
+  if (A && R && S) status = (rNC && sNC) ? 'BOTH NC' : rNC ? 'REACH NC' : sNC ? 'RESOLUTION NC' : 'CONF';
+  else if (A && R) status = rNC ? 'REACH NC' : '';
+
+  document.getElementById('f-status').value = status;
+  updateBanner(status, A, R, S, rNC, sNC);
+  updateDelayFields(status);
+}
+
+function updateBanner(status, A, R, S, rNC, sNC) {
+  const b = document.getElementById('nc-banner');
+  b.className = 'nc-banner'; b.textContent = '';
+  if (!status || status === 'CONF') return;
+  if (status === 'REACH NC') {
+    b.classList.add('reach');
+    b.textContent = `⏱ REACH NC — Reached in ${((R-A)/36e5).toFixed(1)}h (limit: ${REACH_H}h)`;
+  } else if (status === 'RESOLUTION NC') {
+    b.classList.add('resolution');
+    b.textContent = `⏱ RESOLUTION NC — Resolved in ${((S-A)/36e5).toFixed(1)}h (limit: ${RES_H}h)`;
+  } else if (status === 'BOTH NC') {
+    b.classList.add('both');
+    b.textContent = `⏱ BOTH NC — Reach: ${R?((R-A)/36e5).toFixed(1):'?'}h | Resolution: ${S?((S-A)/36e5).toFixed(1):'?'}h`;
+  }
+}
+
+function updateDelayFields(status) {
+  const showR = status === 'REACH NC' || status === 'BOTH NC';
+  const showS = status === 'RESOLUTION NC' || status === 'BOTH NC';
+  document.getElementById('grp-reach-delay').style.display = showR ? 'block' : 'none';
+  document.getElementById('grp-res-delay').style.display   = showS ? 'block' : 'none';
+  if (!showR) document.getElementById('f-reach-delay').value = '';
+  if (!showS) document.getElementById('f-res-delay').value   = '';
+}
+
+['f-asgn-d','f-asgn-t'].forEach(id => document.getElementById(id)?.addEventListener('change', onAssignedChange));
+['f-reach-d','f-reach-t'].forEach(id => document.getElementById(id)?.addEventListener('change', () => guardTime('f-reach-d','f-reach-t','reach-warn')));
+['f-res-d','f-res-t'].forEach(id => document.getElementById(id)?.addEventListener('change', () => guardTime('f-res-d','f-res-t','res-warn')));
+
+// ══════════════════════════════════════════════════════════
+// TICKET FORM
+// ══════════════════════════════════════════════════════════
+function collectForm() {
+  const status = document.getElementById('f-status').value || 'CONF';
+  const ad = document.getElementById('f-asgn-d').value, at = document.getElementById('f-asgn-t').value;
+  const rd = document.getElementById('f-reach-d').value, rt = document.getElementById('f-reach-t').value;
+  const sd = document.getElementById('f-res-d').value,   st = document.getElementById('f-res-t').value;
+  return {
+    upload_id:               crypto.randomUUID(),
+    token_no:                document.getElementById('f-token').value.trim(),
+    rc_no:                   document.getElementById('f-rc').value.trim(),
+    vehicle_used:            document.getElementById('f-vehicle').value,
+    technician:              document.getElementById('f-tech').value,
+    electrician:             document.getElementById('f-elec').value,
+    driver:                  document.getElementById('f-driver').value,
+    assigned_time:           ad && at ? `${ad} ${at}` : '',
+    reach_time:              rd && rt ? `${rd} ${rt}` : '',
+    resolution_time:         sd && st ? `${sd} ${st}` : '',
+    reach_delay_reason:      ['REACH NC','BOTH NC'].includes(status)      ? document.getElementById('f-reach-delay').value.trim() : '',
+    resolution_delay_reason: ['RESOLUTION NC','BOTH NC'].includes(status) ? document.getElementById('f-res-delay').value.trim()   : '',
+    status,
+  };
+}
+
+function validateForm(d) {
+  if (!d.token_no)     { showFormAlert('error','Token Number is required.');  return false; }
+  if (!d.rc_no)        { showFormAlert('error','RC Number is required.');     return false; }
+  if (!d.assigned_time){ showFormAlert('error','Assigned Time is required.'); return false; }
+  if (['REACH NC','BOTH NC'].includes(d.status) && !d.reach_delay_reason)
+    { showFormAlert('error','Reach Delay Reason required.'); return false; }
+  if (['RESOLUTION NC','BOTH NC'].includes(d.status) && !d.resolution_delay_reason)
+    { showFormAlert('error','Resolution Delay Reason required.'); return false; }
+  return true;
+}
+
+async function submitTicket() {
+  const data = collectForm();
+  if (!validateForm(data)) return;
+  if (ONLINE) {
+    try {
+      const res    = await api('/api/tickets', { json: data });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Server error');
+      showFormAlert('success', `✅ Ticket saved! (ID: ${result.ticket_id})`);
+      clearForm(); return;
+    } catch {}
+  }
+  QUEUE.push(data); saveQueue(); renderQueue();
+  showFormAlert('info', '📥 Saved offline — will upload when connected.');
+  clearForm();
+}
+
+function clearForm() {
+  const today = new Date().toISOString().split('T')[0];
+  ['f-token','f-rc','f-vehicle','f-tech','f-elec','f-driver','f-status','f-reach-delay','f-res-delay'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.value = '';
+  });
+  document.getElementById('f-asgn-d').value = today;
+  document.getElementById('f-asgn-t').value = '';
+  ['f-reach-d','f-reach-t','f-res-d','f-res-t'].forEach(id => {
+    const el = document.getElementById(id); if (!el) return;
+    el.value = ''; el.disabled = true;
+  });
+  document.getElementById('nc-banner').className = 'nc-banner';
+  document.getElementById('nc-banner').textContent = '';
+  ['grp-reach-delay','grp-res-delay'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('form-alert').style.display = 'none';
+}
+
+function showFormAlert(type, msg) {
+  const el = document.getElementById('form-alert');
+  el.className = `alert alert-${type}`; el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+// ══════════════════════════════════════════════════════════
+// OFFLINE QUEUE
+// ══════════════════════════════════════════════════════════
+function saveQueue() { localStorage.setItem('bms_queue', JSON.stringify(QUEUE)); }
+
+function renderQueue() {
+  const count  = QUEUE.length;
+  const card   = document.getElementById('queue-card');
+  const badge  = document.getElementById('nav-badge');
+  const countEl= document.getElementById('queue-count');
+  const listEl = document.getElementById('queue-list');
+  if (!card) return;
+  card.style.display = count > 0 ? 'block' : 'none';
+  if (badge) { badge.style.display = count > 0 ? 'block' : 'none'; badge.textContent = count; }
+  if (countEl) countEl.textContent = count;
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  QUEUE.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'queue-item';
+    div.innerHTML = `
+      <div style="font-size:13px"><strong>${item.token_no||'-'} | ${item.rc_no||'-'}</strong><br>
+      <span style="font-size:11px;color:var(--muted)">${fmt(item.assigned_time)} · ${item.status||''}</span></div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-success btn-sm" onclick="uploadOne(${i})">↑</button>
+        <button class="btn btn-danger btn-sm"  onclick="discardOne(${i})">✕</button>
+      </div>`;
+    listEl.appendChild(div);
+  });
+}
+
+async function uploadOne(i) {
+  if (!ONLINE) { alert('No connection.'); return; }
+  try {
+    const res = await api('/api/tickets', { json: QUEUE[i] });
+    const r   = await res.json();
+    if (res.ok) { QUEUE.splice(i, 1); saveQueue(); renderQueue(); }
+    else alert(r.error || 'Upload failed');
+  } catch(e) { alert('Upload failed: ' + e.message); }
+}
+
+function discardOne(i) {
+  if (!confirm('Remove from queue? This ticket will not be saved.')) return;
+  QUEUE.splice(i, 1); saveQueue(); renderQueue();
+}
+
+async function uploadAll() {
+  if (!ONLINE) { alert('No connection.'); return; }
+  let ok = 0, fail = 0;
+  for (let i = QUEUE.length - 1; i >= 0; i--) {
+    try {
+      const res = await api('/api/tickets', { json: QUEUE[i] });
+      if (res.ok) { QUEUE.splice(i, 1); ok++; } else fail++;
+    } catch { fail++; }
+  }
+  saveQueue(); renderQueue();
+  alert(`Uploaded: ${ok}  Failed: ${fail}`);
+}
+
+async function tryUploadQueue() {
+  if (!ONLINE || !QUEUE.length) return;
+  for (let i = QUEUE.length - 1; i >= 0; i--) {
+    try {
+      const res = await api('/api/tickets', { json: QUEUE[i] });
+      if (res.ok) QUEUE.splice(i, 1); else break;
+    } catch { break; }
+  }
+  saveQueue(); renderQueue();
+}
+
+// ══════════════════════════════════════════════════════════
+// TICKETS VIEW
+// ══════════════════════════════════════════════════════════
+async function loadTickets() {
+  const cont = document.getElementById('tickets-container');
+  cont.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Loading...</div>';
+  const params = new URLSearchParams();
+  const tok  = document.getElementById('s-token')?.value; if (tok)  params.set('token_no', tok);
+  const rc   = document.getElementById('s-rc')?.value;    if (rc)   params.set('rc_no', rc);
+  const tech = document.getElementById('s-tech')?.value;  if (tech) params.set('technician', tech);
+  const from = document.getElementById('s-from')?.value;  if (from) params.set('from_date', from);
+  const to   = document.getElementById('s-to')?.value;    if (to)   params.set('to_date', to);
+  try {
+    const res = await api(`/api/tickets?${params}`);
+    ALL_TICKETS = await res.json();
+    filterTickets();
+  } catch {
+    cont.innerHTML = '<div class="alert alert-error">Could not load tickets.</div>';
+  }
+}
+
+function filterTickets() {
+  const tok  = (document.getElementById('s-token')?.value || '').toLowerCase();
+  const rc   = (document.getElementById('s-rc')?.value    || '').toLowerCase();
+  const tech = (document.getElementById('s-tech')?.value  || '').toLowerCase();
+  const rows = ALL_TICKETS.filter(t =>
+    (!tok  || (t.token_no   ||'').toLowerCase().includes(tok))  &&
+    (!rc   || (t.rc_no      ||'').toLowerCase().includes(rc))   &&
+    (!tech || (t.technician ||'').toLowerCase().includes(tech))
+  );
+  renderTickets(rows);
+}
+
+function clearFilters() {
+  ['s-token','s-rc','s-tech','s-from','s-to'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  loadTickets();
+}
+
+function badge(status) {
+  const s = (status||'').toUpperCase();
+  const map = { 'CONF':'b-conf', 'REACH NC':'b-rnc', 'RESOLUTION NC':'b-snc', 'BOTH NC':'b-bnc', 'NC':'b-nc' };
+  const cls = map[s] || 'b-nc';
+  return `<span class="badge ${cls}">${s||'?'}</span>`;
+}
+
+function renderTickets(tickets) {
+  const cont = document.getElementById('tickets-container');
+  if (!tickets.length) { cont.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>No tickets found.</div>'; return; }
+
+  // Desktop table, mobile cards
+  const isMobile = window.innerWidth < 641;
+  if (isMobile) {
+    cont.innerHTML = tickets.map(t => {
+      const nc = (t.status||'').toUpperCase().includes('NC');
+      return `<div class="ticket-item ${nc?'nc':'conf'}">
+        <div class="ticket-row"><span class="ticket-token">${t.token_no||'-'}</span>${badge(t.status)}</div>
+        <div class="ticket-meta">RC: ${t.rc_no||'-'} · ${fmt(t.assigned_time)}</div>
+        <div class="ticket-meta">Tech: ${t.technician||'-'} · Driver: ${t.driver||'-'}</div>
+        ${t.reach_delay_reason      ? `<div class="ticket-meta" style="color:var(--orange)">⏱ Reach: ${t.reach_delay_reason}</div>` : ''}
+        ${t.resolution_delay_reason ? `<div class="ticket-meta" style="color:var(--red)">⏱ Res: ${t.resolution_delay_reason}</div>` : ''}
+      </div>`;
+    }).join('');
+  } else {
+    cont.innerHTML = `<div class="card" style="padding:0;overflow:auto">
+      <table>
+        <thead><tr><th>#</th><th>Token</th><th>RC No</th><th>Technician</th><th>Driver</th><th>Assigned</th><th>Reach</th><th>Resolution</th><th>Status</th></tr></thead>
+        <tbody>${tickets.map((t,i) => `
+          <tr>
+            <td style="color:var(--muted)">${i+1}</td>
+            <td><strong>${t.token_no||'-'}</strong></td>
+            <td>${t.rc_no||'-'}</td>
+            <td>${t.technician||'-'}</td>
+            <td>${t.driver||'-'}</td>
+            <td style="font-size:12px">${fmt(t.assigned_time)}</td>
+            <td style="font-size:12px">${fmt(t.reach_time)}</td>
+            <td style="font-size:12px">${fmt(t.resolution_time)}</td>
+            <td>${badge(t.status)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table></div>`;
+  }
+}
+
+function fmt(dt) {
+  if (!dt) return '-';
+  const [datePart, timePart] = dt.split(' ');
+  const [y, m, d] = (datePart || '').split('-');
+  if (!y || !m || !d) return dt;
+  return `${d}-${m}-${y}${timePart ? ' ' + timePart : ''}`;
+}
+
+async function downloadBlob(url, fallbackName) {
+  try {
+    const res = await api(url);
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error || 'Export failed'); }
+    const blob = await res.blob();
+    const disposition = res.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="?([^"]+)"?/);
+    const filename = match ? match[1] : fallbackName;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(a.href);
+  } catch(e) { alert('Export failed: ' + e.message); }
+}
+
+async function exportTickets() {
+  const params = new URLSearchParams();
+  const tok  = document.getElementById('s-token')?.value; if (tok)  params.set('token_no', tok);
+  const rc   = document.getElementById('s-rc')?.value;    if (rc)   params.set('rc_no', rc);
+  const tech = document.getElementById('s-tech')?.value;  if (tech) params.set('technician', tech);
+  const from = document.getElementById('s-from')?.value;  if (from) params.set('from_date', from);
+  const to   = document.getElementById('s-to')?.value;    if (to)   params.set('to_date', to);
+  await downloadBlob(`/api/tickets/export?${params}`, 'bms_tickets.xlsx');
+}
+
+async function exportDashboard() {
+  const from = document.getElementById('dash-from')?.value;
+  const to   = document.getElementById('dash-to')?.value;
+  const params = new URLSearchParams();
+  if (from) params.set('from_date', from);
+  if (to)   params.set('to_date', to);
+  await downloadBlob(`/api/reports/export?${params}`, 'bms_report.xlsx');
+}
+
+// ══════════════════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════════════════
+async function loadDashboard() {
+  const now   = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  const today = now.toISOString().split('T')[0];
+  const from  = document.getElementById('dash-from')?.value || first;
+  const to    = document.getElementById('dash-to')?.value   || today;
+  if (document.getElementById('dash-from') && !document.getElementById('dash-from').value) {
+    document.getElementById('dash-from').value = from;
+    document.getElementById('dash-to').value   = today;
+  }
+  try {
+    const res  = await api(`/api/reports/summary?from_date=${from}&to_date=${to}`);
+    const data = await res.json();
+    const s    = data.summary;
+    document.getElementById('dash-stats').innerHTML = `
+      <div class="stat-card"><div class="stat-num">${s.total}</div><div class="stat-lbl">Total Tickets</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--green)">${s.conf}</div><div class="stat-lbl">CONF (${s.conf_pct}%)</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:var(--red)">${s.nc}</div><div class="stat-lbl">NC (${s.nc_pct}%)</div></div>`;
+    const rows = data.technicians;
+    document.getElementById('dash-tech').innerHTML = rows.length
+      ? `<table><thead><tr><th>Technician</th><th>Total</th><th>CONF</th><th>NC</th><th>CONF%</th></tr></thead>
+         <tbody>${rows.map(r => `<tr><td>${r.technician}</td><td>${r.total}</td><td style="color:var(--green)">${r.conf}</td><td style="color:var(--red)">${r.nc}</td><td><strong>${r.conf_pct}%</strong></td></tr>`).join('')}</tbody></table>`
+      : '<div class="empty"><div class="empty-icon">📊</div>No data for this period.</div>';
+  } catch {}
+}
+
+// ══════════════════════════════════════════════════════════
+// ADMIN PANEL
+// ══════════════════════════════════════════════════════════
+async function loadAdmin() {
+  await loadUsers();
+  await loadAllMaster();
+}
+
+async function loadUsers() {
+  try {
+    const res   = await api('/api/admin/users');
+    const users = await res.json();
+    document.getElementById('users-list').innerHTML = users.length
+      ? `<table>
+          <thead><tr><th>Username</th><th>Role</th><th>Actions</th></tr></thead>
+          <tbody>${users.map(u => `
+            <tr>
+              <td><strong>${u.username}</strong></td>
+              <td><span class="badge ${u.role==='admin'?'b-conf':'b-rnc'}">${u.role}</span></td>
+              <td style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-warn btn-sm" onclick="changePasswordModal('${u.id}','${u.username}')">🔑 Password</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}','${u.username}')">🗑</button>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>`
+      : '<div class="empty">No users found.</div>';
+  } catch {}
+}
+
+async function loadAllMaster() {
+  const types = ['vehicle','technician','electrician','driver'];
+  const labels = {vehicle:'🚗 Vehicles', technician:'👨‍🔧 Technicians', electrician:'⚡ Electricians', driver:'🚌 Drivers'};
+  const cont = document.getElementById('master-sections');
+  cont.innerHTML = '';
+  for (const type of types) {
+    try {
+      const res   = await api(`/api/admin/master/${type}`);
+      const items = await res.json();
+      const div   = document.createElement('div');
+      div.className = 'card';
+      div.innerHTML = `
+        <div class="card-title" style="justify-content:space-between">
+          ${labels[type]}
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="new-${type}" placeholder="Add new..." style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;width:160px"/>
+            <button class="btn btn-primary btn-sm" onclick="addMaster('${type}')">+ Add</button>
+          </div>
+        </div>
+        <div id="master-list-${type}">
+          ${items.map(it => `
+            <div class="master-item ${it.active?'':'inactive'}" id="mi-${it.id}">
+              <span>${it.name}</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="toggleMaster('${it.id}',${!it.active})">${it.active?'Disable':'Enable'}</button>
+                <button class="btn btn-danger  btn-sm" onclick="deleteMaster('${it.id}','${type}')">🗑</button>
+              </div>
+            </div>`).join('') || '<div class="empty" style="padding:20px">No items yet.</div>'}
+        </div>`;
+      cont.appendChild(div);
+    } catch {}
+  }
+}
+
+async function addMaster(type) {
+  const inp  = document.getElementById(`new-${type}`);
+  const name = inp.value.trim();
+  if (!name) return;
+  try {
+    await api(`/api/admin/master/${type}`, { json: { name } });
+    inp.value = '';
+    await loadAllMaster();
+    await loadMaster(); // refresh dropdowns
+  } catch(e) { alert('Failed: ' + e.message); }
+}
+
+async function toggleMaster(id, active) {
+  try { await api(`/api/admin/master/${id}/toggle`, { json: { active } }); await loadAllMaster(); }
+  catch(e) { alert('Failed: ' + e.message); }
+}
+
+async function deleteMaster(id, type) {
+  if (!confirm('Delete this item?')) return;
+  try { await api(`/api/admin/master/${id}`, { method:'DELETE' }); await loadAllMaster(); }
+  catch(e) { alert('Failed: ' + e.message); }
+}
+
+async function deleteUser(id, uname) {
+  if (!confirm(`Delete user "${uname}"?`)) return;
+  try { await api(`/api/admin/users/${id}`, { method:'DELETE' }); await loadUsers(); }
+  catch(e) { alert('Failed: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════════════════
+function openModal(title, bodyHTML, footerHTML) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML    = bodyHTML;
+  document.getElementById('modal-footer').innerHTML  = footerHTML;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay'))
+    document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function openUserModal() {
+  openModal('Add New User',
+    `<div class="fg"><label>Username</label><input type="text" id="mu-user" placeholder="username"/></div>
+     <div class="fg"><label>Password</label><input type="password" id="mu-pass" placeholder="password"/></div>
+     <div class="fg"><label>Role</label>
+       <select id="mu-role"><option value="bd_incharge">BD Incharge</option><option value="admin">Admin</option></select>
+     </div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="addUser()">Add User</button>`
+  );
+}
+
+async function addUser() {
+  const uname = document.getElementById('mu-user').value.trim();
+  const pw    = document.getElementById('mu-pass').value;
+  const role  = document.getElementById('mu-role').value;
+  if (!uname || !pw) { alert('Fill all fields.'); return; }
+  try {
+    const res = await api('/api/admin/users', { json: { username: uname, password: pw, role } });
+    const r   = await res.json();
+    if (!res.ok) throw new Error(r.error);
+    closeModal(); await loadUsers();
+  } catch(e) { alert(e.message); }
+}
+
+function changePasswordModal(id, uname) {
+  openModal(`Change Password — ${uname}`,
+    `<div class="fg"><label>New Password</label><input type="password" id="cp-pass" placeholder="New password"/></div>`,
+    `<button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+     <button class="btn btn-primary" onclick="changePassword('${id}')">Save</button>`
+  );
+}
+
+async function changePassword(id) {
+  const pw = document.getElementById('cp-pass').value;
+  if (!pw) { alert('Enter new password.'); return; }
+  try {
+    await api(`/api/admin/users/${id}/password`, { json: { password: pw } });
+    closeModal(); alert('Password changed.');
+  } catch(e) { alert(e.message); }
+}
+
+// ══════════════════════════════════════════════════════════
+// ICONS (inline SVG)
+// ══════════════════════════════════════════════════════════
+const iconPlus    = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
+const iconList    = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>`;
+const iconChart   = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>`;
+const iconGear    = () => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+
+// ══════════════════════════════════════════════════════════
+// UTIL
+// ══════════════════════════════════════════════════════════
+function showEl(el, cls, msg) { el.className = `alert ${cls}`; el.textContent = msg; el.style.display = 'block'; }
+</script>
+</body>
+</html>
